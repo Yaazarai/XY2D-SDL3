@@ -6,10 +6,15 @@ Programs can be compiled by opening the ".\BUILDENV" batch file within the folde
 Building requires adjusting the compiler path to your version and install path of the LLVM clang-cl compiler and SDL3 and GLM precompiled lbiraries within the _BUILDENV batch script. Note that these should be source directories, for example:
 
 For SDL3:
+
 	C:\lib-includes\SDL3-3.4.2
+	
 	C:\lib-includes\SDL3-3.4.2\include\
+	
 	C:\lib-includes\SDL3-3.4.2\lib\x64\SDL3.lib
 
 For GLM:
+
 	C:\lib-includes\glm-master
+	
 	C:\lib-includes\glm-master\glm
