@@ -37,10 +37,10 @@
 			
 			inline static void GameWindowInit();
 			
-			inline static glm::vec2 MousePosition() {
+			inline static glm::ivec2 MousePosition() {
 				glm::vec2 mxy;
 				SDL_GetMouseState(&mxy.x, &mxy.y);
-				return mxy;
+				return glm::ivec2(mxy);
 			}
 			
 			inline static void GameWindowSize(int32_t width, int32_t height) {
@@ -144,7 +144,6 @@
 				
 				SDL_GPUVertexBufferDescription vertexDescriptions[1];
 				vertexDescriptions[0] = { .slot = 0, .pitch = sizeof(xy2d_vertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX, .instance_step_rate = 0 };
-				
 				SDL_GPUVertexAttribute vertexAttributes[2];
 				vertexAttributes[0] = { .location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = offsetof(xy2d_vertex, xyz) };
 				vertexAttributes[1] = { .location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = offsetof(xy2d_vertex, txcoord) };
@@ -159,12 +158,10 @@
 				};
 				
 				SDL_GPUGraphicsPipelineCreateInfo pipelineInfo {
-					.vertex_shader = vertexShader,
-					.fragment_shader = fragmentShader,
+					.vertex_shader = vertexShader, .fragment_shader = fragmentShader,
 					.vertex_input_state = { .vertex_buffer_descriptions = vertexDescriptions, .num_vertex_buffers = std::size(vertexDescriptions), .vertex_attributes = vertexAttributes, .num_vertex_attributes = std::size(vertexAttributes) },
 					.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-					.target_info.num_color_targets = std::max(colorTargetCount, 1U),
-					.target_info.color_target_descriptions = colorDescr.data(),
+					.target_info = { .color_target_descriptions = colorDescr.data(), .num_color_targets = std::max(colorTargetCount, 1U), }
 				};
 				
 				graphicsPipelines.push_back(SDL_CreateGPUGraphicsPipeline(xy2d_gamestate::device, &pipelineInfo));

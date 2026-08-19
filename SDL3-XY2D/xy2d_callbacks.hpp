@@ -12,11 +12,8 @@
 			std::function<void(A...)> bound;
 			
 			xy2d_callback(std::function<void(A...)> func) : hash(func.target_type().hash_code()), bound(std::move(func)) {}
-			
 			bool compare(const xy2d_callback<A...>& cb) { return hash == cb.hash; }
-			
 			constexpr size_t hash_code() const throw() { return hash; }
-			
 			xy2d_callback<A...>& invoke(A... args) { bound(static_cast<A&&>(args)...); return (*this); }
 		};
 		
@@ -28,12 +25,15 @@
 			
 			void hook(const xy2d_callback<A...> cb) {
 				std::lock_guard<std::mutex> guard(safety_lock);
+				
 				callbacks.push_back(cb);
 			}
 			
 			void invoke(A... args) {
 				std::lock_guard<std::mutex> guard(safety_lock);
-				for (xy2d_callback<A...> cb : callbacks) cb.invoke(static_cast<A&&>(args)...);
+				
+				for (xy2d_callback<A...> cb : callbacks)
+					cb.invoke(static_cast<A&&>(args)...);
 			}
 		};
 	}
