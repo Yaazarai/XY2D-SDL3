@@ -15,7 +15,7 @@
 				{ glm::vec3(0.0, 1.0, 0.0), glm::vec2(0.0, 1.0) },
 			};
 			
-			glm::uint32_t batchIndex = -1.0;
+			glm::int32_t batchIndex = -1.0;
 			glm::vec4 xywh = glm::vec4(0.0, 0.0, 1.0, 1.0);
 			glm::vec4 uvwh = glm::vec4(0.0, 0.0, 1.0, 1.0);
 			glm::vec2 xyscale = glm::vec2(1.0, 1.0);

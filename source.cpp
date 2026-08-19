@@ -22,6 +22,8 @@ public:
 	} sceneUBO;
 	
 	inline static void preRenderFunction(SDL_GPUCommandBuffer* cmdbuffer) {
+		xy2d_gamestate::UploadBufferPass(cmdbuffer, &transferBuffer, &vertexBuffer);
+		
 		SDL_GPURenderPass* renderPassA = xy2d_renderer::RenderPassBegin(cmdbuffer, { emission.texture, absorption.texture }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
 		glm::mat4 cameraData = xy2d_renderer::CameraTransform(extent, glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
 		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
@@ -33,7 +35,7 @@ public:
 	
 	inline static void preRenderPointSweep(SDL_GPUCommandBuffer* cmdbuffer) {
 		SDL_GPUComputePass* computePass = xy2d_renderer::ComputePassBegin(cmdbuffer, { radiance.texture, transmit.texture, fluences.texture }, {});
-		//xy2d_renderer::BindComputeTextures(computePass, { emission.texture, absorption.texture });
+		xy2d_renderer::BindComputeTextures(computePass, { emission.texture, absorption.texture });
 		int32_t xx = fluences.width / 32;
 		int32_t yy = fluences.height / 32;
 		xy2d_renderer::BindComputeDispatch(computePass, pointsweep_pipeline, glm::ivec3(xx, yy, 1));
@@ -42,7 +44,7 @@ public:
 	
 	inline static void presentFunction(SDL_GPUCommandBuffer* cmdbuffer, SDL_GPUTexture* swapImage, SDL_GPURenderPass* renderpass, glm::uint32_t& swapImageWidth, glm::uint32_t& swapImageHeight) {
 		SDL_GPURenderPass* renderPassB = xy2d_renderer::RenderPassBegin(cmdbuffer, { swapImage }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
-		glm::mat4x4 cameraData = xy2d_renderer::CameraTransform(glm::vec2(xy2d_gamestate::windowSize), glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0), 0.0f /*0.78539816339744830961566084581988f*/);
+		glm::mat4x4 cameraData = xy2d_renderer::CameraTransform(glm::vec2(xy2d_gamestate::windowSize), glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0), 0.78539816339744830961566084581988f);
 		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
 		xy2d_renderer::BindFragmentTextures(renderPassB, { absorption.texture });
 		xy2d_renderer::PipeVertices(renderPassB, present_pipeline, vertexBuffer);
@@ -61,7 +63,7 @@ public:
 		sceneSpriteB.Size(extent).Scale(xyscale);
 		
 		xy2d_sprite_manager::BatchVerticesStageBuffer(&transferBuffer);
-		xy2d_gamestate::TransferBuffer(&transferBuffer, &vertexBuffer);
+		//xy2d_gamestate::UploadBuffer(&transferBuffer, &vertexBuffer);
 	}
 	
 	inline static void Initialize() {
@@ -94,7 +96,7 @@ public:
 		transferBuffer = xy2d_gamestate::CreateBuffer(spriteVertexSize, xy2d_buffertype::TRANSFER_GPU);
 		
 		xy2d_sprite_manager::BatchVerticesStageBuffer(&transferBuffer);
-		xy2d_gamestate::TransferBuffer(&transferBuffer, &vertexBuffer);
+		xy2d_gamestate::UploadBuffer(&transferBuffer, &vertexBuffer);
 		
 		xy2d_gamestate::onGameEvent.hook(xy2d_event_callback(point_sweep::gameEvent));
 		xy2d_gamestate::onGamePreRender.hook(xy2d_prerender_callback(point_sweep::preRenderFunction));

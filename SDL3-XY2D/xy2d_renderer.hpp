@@ -31,7 +31,7 @@
 			inline static SDL_GPURenderPass* RenderPassBegin(SDL_GPUCommandBuffer* cmdbuffer, const std::vector<SDL_GPUTexture*> textures, SDL_FColor clearColor, SDL_GPULoadOp loadOp) {
 				std::vector<SDL_GPUColorTargetInfo> targets(textures.size());
 					for(size_t i = 0; i < textures.size(); i++)
-						targets[i] = { .load_op = loadOp, .store_op = SDL_GPU_STOREOP_STORE, .texture = textures[i], .clear_color = clearColor };
+						targets[i] = { .texture = textures[i], .clear_color = clearColor, .load_op = loadOp, .store_op = SDL_GPU_STOREOP_STORE };
 				
 				return SDL_BeginGPURenderPass(cmdbuffer, targets.data(), targets.size(), nullptr);
 			}
@@ -65,11 +65,11 @@
 			inline static SDL_GPUComputePass* ComputePassBegin(SDL_GPUCommandBuffer* cmdbuffer, const std::vector<SDL_GPUTexture*> writeTextures, const std::vector<SDL_GPUBuffer*> writeBuffers) {
 				std::vector<SDL_GPUStorageTextureReadWriteBinding> textbindings(writeTextures.size());
 				for(size_t i = 0; i < writeTextures.size(); i++)
-					textbindings[i] = { .mip_level = 0, .layer = 0, .cycle = false, .texture = writeTextures[i] };
+					textbindings[i] = { .texture = writeTextures[i], .mip_level = 0, .layer = 0, .cycle = false };
 				
 				std::vector<SDL_GPUStorageBufferReadWriteBinding> buffbindings(writeBuffers.size());
 				for(size_t i = 0; i < writeBuffers.size(); i++)
-					buffbindings[i] = { .cycle = false, .buffer = writeBuffers[i] };
+					buffbindings[i] = { .buffer = writeBuffers[i], .cycle = false };
 				
 				SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(cmdbuffer, textbindings.data(), textbindings.size(), buffbindings.data(), buffbindings.size());
 				return computePass;

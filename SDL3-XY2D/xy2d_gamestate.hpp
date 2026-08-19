@@ -65,7 +65,7 @@
 				for(size_t i = 0; i < computePipelines.size(); i++) SDL_ReleaseGPUComputePipeline(xy2d::xy2d_gamestate::device, computePipelines[i]);
 				for(size_t i = 0; i < imageMemory.size(); i++) SDL_ReleaseGPUTexture(xy2d::xy2d_gamestate::device, imageMemory[i].texture);
 				for(size_t i = 0; i < bufferMemory.size(); i++)
-					if (bufferMemory[i].type & (xy2d_buffertype::TRANSFER_GPU | xy2d_buffertype::TRANSFER_CPU) != 0)
+					if ((bufferMemory[i].type & (xy2d_buffertype::TRANSFER_GPU | xy2d_buffertype::TRANSFER_CPU)) != 0)
 						SDL_ReleaseGPUTransferBuffer(xy2d::xy2d_gamestate::device, (SDL_GPUTransferBuffer*) bufferMemory[i].buffer);
 					else SDL_ReleaseGPUBuffer(xy2d::xy2d_gamestate::device, (SDL_GPUBuffer*) bufferMemory[i].buffer);
 				
@@ -132,22 +132,22 @@
 			inline static SDL_GPUGraphicsPipeline* GraphicsPipeline(std::string vertexPath, uint32_t vertexStorageBuffers, std::string fragmentPath, uint32_t fragmentStorageTextures, uint32_t fragmentStorageBuffers, uint32_t fragmentSamplers, uint32_t colorTargetCount = 1) {
 				size_t vertexSize = 0;
 				void* vcode = SDL_LoadFile(vertexPath.c_str(), &vertexSize);
-				SDL_GPUShaderCreateInfo vertexInfo = { .code = (uint8_t*) vcode, .code_size = vertexSize, .entrypoint = "main", .format = SDL_GPU_SHADERFORMAT_SPIRV, .stage = SDL_GPU_SHADERSTAGE_VERTEX, .num_uniform_buffers = vertexStorageBuffers};
+				SDL_GPUShaderCreateInfo vertexInfo = { .code_size = vertexSize, .code = (uint8_t*) vcode, .entrypoint = "main", .format = SDL_GPU_SHADERFORMAT_SPIRV, .stage = SDL_GPU_SHADERSTAGE_VERTEX, .num_uniform_buffers = vertexStorageBuffers };
 				SDL_GPUShader* vertexShader = SDL_CreateGPUShader(xy2d_gamestate::device, &vertexInfo);
 				SDL_free(vcode);
 				
 				size_t fragmentSize = 0;
 				void* fcode = SDL_LoadFile(fragmentPath.c_str(), &fragmentSize);
-				SDL_GPUShaderCreateInfo fragmentInfo = { .code = (uint8_t*) fcode, .code_size = fragmentSize, .entrypoint = "main", .format = SDL_GPU_SHADERFORMAT_SPIRV, .stage = SDL_GPU_SHADERSTAGE_FRAGMENT, .num_storage_textures = fragmentStorageTextures, .num_uniform_buffers = fragmentStorageBuffers, .num_samplers = fragmentSamplers };
+				SDL_GPUShaderCreateInfo fragmentInfo = { .code_size = fragmentSize, .code = (uint8_t*) fcode, .entrypoint = "main", .format = SDL_GPU_SHADERFORMAT_SPIRV, .stage = SDL_GPU_SHADERSTAGE_FRAGMENT, .num_samplers = fragmentSamplers, .num_storage_textures = fragmentStorageTextures, .num_uniform_buffers = fragmentStorageBuffers };
 				SDL_GPUShader* fragmentShader = SDL_CreateGPUShader(xy2d_gamestate::device, &fragmentInfo);
 				SDL_free(fcode);
 				
 				SDL_GPUVertexBufferDescription vertexDescriptions[1];
-				vertexDescriptions[0] = { .slot = 0, .instance_step_rate = 0, .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX, .pitch = sizeof(xy2d_vertex) };
+				vertexDescriptions[0] = { .slot = 0, .pitch = sizeof(xy2d_vertex), .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX, .instance_step_rate = 0 };
 				
 				SDL_GPUVertexAttribute vertexAttributes[2];
-				vertexAttributes[0] = { .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .location = 0, .offset = offsetof(xy2d_vertex, xyz), .buffer_slot = 0 };
-				vertexAttributes[1] = { .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .location = 1, .offset = offsetof(xy2d_vertex, txcoord), .buffer_slot = 0 };
+				vertexAttributes[0] = { .location = 0, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, .offset = offsetof(xy2d_vertex, xyz) };
+				vertexAttributes[1] = { .location = 1, .buffer_slot = 0, .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, .offset = offsetof(xy2d_vertex, txcoord) };
 				
 				std::vector<SDL_GPUColorTargetDescription> colorDescr(colorTargetCount);
 				for(size_t i = 0; i < std::max(colorTargetCount, 1U); i++) {
@@ -161,11 +161,8 @@
 				SDL_GPUGraphicsPipelineCreateInfo pipelineInfo {
 					.vertex_shader = vertexShader,
 					.fragment_shader = fragmentShader,
+					.vertex_input_state = { .vertex_buffer_descriptions = vertexDescriptions, .num_vertex_buffers = std::size(vertexDescriptions), .vertex_attributes = vertexAttributes, .num_vertex_attributes = std::size(vertexAttributes) },
 					.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-					.vertex_input_state.num_vertex_buffers = std::size(vertexDescriptions),
-					.vertex_input_state.vertex_buffer_descriptions = vertexDescriptions,
-					.vertex_input_state.num_vertex_attributes = std::size(vertexAttributes),
-					.vertex_input_state.vertex_attributes = vertexAttributes,
 					.target_info.num_color_targets = std::max(colorTargetCount, 1U),
 					.target_info.color_target_descriptions = colorDescr.data(),
 				};
@@ -181,17 +178,9 @@
 				void* computeCode = SDL_LoadFile(computePath.c_str(), &computeSize);
 				
 				SDL_GPUComputePipelineCreateInfo computeInfo = {
-					.code = (uint8_t*) computeCode,
-					.code_size = computeSize,
-					.entrypoint = "main",
-					.format = SDL_GPU_SHADERFORMAT_SPIRV,
-					.num_readwrite_storage_buffers = storageBuffers,
-					.num_readwrite_storage_textures = storageTextures,
-					.num_uniform_buffers = uniformBufferCount,
-					.num_samplers = samplerTextureCount,
-					.threadcount_x = static_cast<Uint32>(threadsXYZ.x),
-					.threadcount_y = static_cast<Uint32>(threadsXYZ.y),
-					.threadcount_z = static_cast<Uint32>(threadsXYZ.z)
+					.code_size = computeSize, .code = (uint8_t*) computeCode, .entrypoint = "main", .format = SDL_GPU_SHADERFORMAT_SPIRV,
+					.num_samplers = samplerTextureCount, .num_readwrite_storage_textures = storageTextures, .num_readwrite_storage_buffers = storageBuffers, .num_uniform_buffers = uniformBufferCount,
+					.threadcount_x = static_cast<Uint32>(threadsXYZ.x), .threadcount_y = static_cast<Uint32>(threadsXYZ.y), .threadcount_z = static_cast<Uint32>(threadsXYZ.z)
 				};
 				
 				computePipelines.push_back(SDL_CreateGPUComputePipeline(xy2d_gamestate::device, &computeInfo));
@@ -201,8 +190,8 @@
 			
 			inline static xy2d_image CreateTexture(SDL_GPUTextureFormat format, uint32_t width, uint32_t height,  uint32_t mips = 1, SDL_GPUSampleCount msaa = SDL_GPU_SAMPLECOUNT_1) {
 				SDL_GPUTextureCreateInfo textureInfo = {
-					.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE | SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_SAMPLER,
-					.type = SDL_GPU_TEXTURETYPE_2D, .layer_count_or_depth = 1U, .format = format, .num_levels = mips, .sample_count = msaa, .width = width, .height = height
+					.type = SDL_GPU_TEXTURETYPE_2D, .format = format, .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE | SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+					.width = width, .height = height, .layer_count_or_depth = 1U, .num_levels = mips, .sample_count = msaa
 				};
 				imageMemory.push_back(xy2d_image(width, height, mips, format, msaa, SDL_CreateGPUTexture(xy2d_gamestate::device, &textureInfo)));
 				return imageMemory.back();
@@ -211,19 +200,19 @@
 			inline static xy2d_buffer CreateBuffer(uint32_t byteLength, xy2d_buffertype type) {
 				switch(type) {
 					case xy2d_buffertype::STORAGE: {
-						SDL_GPUBufferCreateInfo bufferInfo = { .size = byteLength, .usage = SDL_GPU_BUFFERUSAGE_VERTEX | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ };
+						SDL_GPUBufferCreateInfo bufferInfo = { .usage = SDL_GPU_BUFFERUSAGE_VERTEX | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, .size = byteLength, };
 						bufferMemory.push_back(xy2d_buffer(byteLength, xy2d_buffertype::STORAGE, SDL_CreateGPUBuffer(xy2d_gamestate::device, &bufferInfo)));
 					} break;
 					case xy2d_buffertype::TRANSFER_GPU: {
-						SDL_GPUTransferBufferCreateInfo bufferInfo = { .size = byteLength, .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD };
+						SDL_GPUTransferBufferCreateInfo bufferInfo = { .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, .size = byteLength, };
 						bufferMemory.push_back(xy2d_buffer(byteLength, xy2d_buffertype::TRANSFER_GPU, SDL_CreateGPUTransferBuffer(xy2d_gamestate::device, &bufferInfo)));
 					} break;
 					case xy2d_buffertype::TRANSFER_CPU: {
-						SDL_GPUTransferBufferCreateInfo bufferInfo = { .size = byteLength, .usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD };
+						SDL_GPUTransferBufferCreateInfo bufferInfo = { .usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, .size = byteLength, };
 						bufferMemory.push_back(xy2d_buffer(byteLength, xy2d_buffertype::TRANSFER_CPU, SDL_CreateGPUTransferBuffer(xy2d_gamestate::device, &bufferInfo)));
 					} break;
 					case xy2d_buffertype::COMPUTE: {
-						SDL_GPUBufferCreateInfo bufferInfo = { .size = byteLength, .usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE };
+						SDL_GPUBufferCreateInfo bufferInfo = { .usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE, .size = byteLength, };
 						bufferMemory.push_back(xy2d_buffer(byteLength, xy2d_buffertype::COMPUTE, SDL_CreateGPUBuffer(xy2d_gamestate::device, &bufferInfo)));
 					} break;
 				}
@@ -237,14 +226,22 @@
 				return (indices != nullptr);
 			}
 			
-			inline static bool TransferBuffer(xy2d_buffer* transferBuffer, xy2d_buffer* destinationBuffer) {
-				SDL_GPUCommandBuffer* cmdBuffer = SDL_AcquireGPUCommandBuffer(xy2d_gamestate::device);
-					SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdBuffer);
-						SDL_GPUTransferBufferLocation location = { .transfer_buffer = (SDL_GPUTransferBuffer*) transferBuffer->buffer, .offset = 0 };
-						SDL_GPUBufferRegion region = { .buffer = (SDL_GPUBuffer*) destinationBuffer->buffer, .size = destinationBuffer->byteLength, .offset = 0 };
+			inline static bool UploadBuffer(xy2d_buffer* transferBuffer, xy2d_buffer* destinationBuffer) {
+				SDL_GPUCommandBuffer* cmdbuffer = SDL_AcquireGPUCommandBuffer(xy2d_gamestate::device);
+					SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuffer);
+						SDL_GPUTransferBufferLocation location = { .transfer_buffer = (SDL_GPUTransferBuffer*) transferBuffer->buffer };
+						SDL_GPUBufferRegion region = { .buffer = (SDL_GPUBuffer*) destinationBuffer->buffer, .size = destinationBuffer->byteLength };
 						SDL_UploadToGPUBuffer(copyPass, &location, &region, true);
 					SDL_EndGPUCopyPass(copyPass);
-				return SDL_SubmitGPUCommandBuffer(cmdBuffer);
+				return SDL_SubmitGPUCommandBuffer(cmdbuffer);
+			}
+			
+			inline static void UploadBufferPass(SDL_GPUCommandBuffer* cmdbuffer, xy2d_buffer* transferBuffer, xy2d_buffer* destinationBuffer) {
+				SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdbuffer);
+					SDL_GPUTransferBufferLocation location = { .transfer_buffer = (SDL_GPUTransferBuffer*) transferBuffer->buffer };
+					SDL_GPUBufferRegion region = { .buffer = (SDL_GPUBuffer*) destinationBuffer->buffer, .size = destinationBuffer->byteLength };
+					SDL_UploadToGPUBuffer(copyPass, &location, &region, true);
+				SDL_EndGPUCopyPass(copyPass);
 			}
 		};
 	}

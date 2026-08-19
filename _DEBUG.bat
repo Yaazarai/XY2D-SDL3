@@ -6,15 +6,14 @@ clang-cl^
  /D _DEBUG^
  /D _CRT_SECURE_NO_WARNINGS^
  /std:c++20^
- /MP^
  /MDd^
  /O2^
  /Oi^
- /GL^
  /Gy^
  /permissive^
  /EHsc^
- /W0^
+ -Werror=return-type^
+ -Wno-c99-designator^
  /I "%CD%"^
  /I "%SDL%/include/"^
  /I "%GLM%/"^
