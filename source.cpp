@@ -22,8 +22,6 @@ public:
 	} sceneUBO;
 	
 	inline static void preRenderFunction(SDL_GPUCommandBuffer* cmdbuffer) {
-		xy2d_gamestate::UploadBufferPass(cmdbuffer, &transferBuffer, &vertexBuffer);
-		
 		SDL_GPURenderPass* renderPassA = xy2d_renderer::RenderPassBegin(cmdbuffer, { emission.texture, absorption.texture }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
 		glm::mat4 cameraData = xy2d_renderer::CameraTransform(extent, glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
 		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
@@ -54,8 +52,8 @@ public:
 	
 	inline static void onResizeSceneTarget(SDL_Event* event) {
 		if (event->type != SDL_EVENT_WINDOW_RESIZED) return;
-		xy2d_renderer::ResizeEvent(event, &absorption);
-		xy2d_renderer::ResizeEvent(event, &emission);
+		xy2d_renderer::ResizeEvent(event, absorption);
+		xy2d_renderer::ResizeEvent(event, emission);
 		
 		extent = glm::vec2(absorption.width, absorption.height);
 		glm::vec2 xyscale = glm::vec2(xy2d_gamestate::windowSize) / extent;
@@ -63,7 +61,7 @@ public:
 		sceneSpriteB.Size(extent).Scale(xyscale);
 		
 		xy2d_sprite_manager::BatchVerticesStageBuffer(&transferBuffer);
-		//xy2d_gamestate::UploadBuffer(&transferBuffer, &vertexBuffer);
+		xy2d_gamestate::UploadBuffer(&transferBuffer, &vertexBuffer);
 	}
 	
 	inline static void Initialize() {

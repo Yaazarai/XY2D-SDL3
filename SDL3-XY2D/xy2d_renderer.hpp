@@ -15,15 +15,15 @@
 				return glm::translate(projection, glm::vec3(-cameraCenter, 0.0f));
 			}
 			
-			inline static void ResizeEvent(SDL_Event* event, xy2d_image* renderer) {
+			inline static void ResizeEvent(SDL_Event* event, xy2d_image& renderImage) {
 				if (event->type != SDL_EVENT_WINDOW_RESIZED) return;
 				
-				uint32_t width = renderer->width;
+				uint32_t width = renderImage.width;
 				uint32_t height = width * static_cast<glm::float32_t>(xy2d_gamestate::windowSize.y) / static_cast<glm::float32_t>(xy2d_gamestate::windowSize.x);
-				SDL_ReleaseGPUTexture(xy2d_gamestate::device, renderer->texture);
-				*renderer = xy2d_gamestate::CreateTexture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB, width, height);
-				(*renderer).width = width;
-				(*renderer).height = height;
+				SDL_ReleaseGPUTexture(xy2d_gamestate::device, renderImage.texture);
+				renderImage = xy2d_gamestate::CreateTexture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB, width, height);
+				renderImage.width = width;
+				renderImage.height = height;
 				
 				xy2d_gamestate::LogEvent(SDL_APP_SUCCESS, { "Resize Event: ", std::to_string(width), " : ", std::to_string(height) });
 			}
