@@ -27,6 +27,14 @@
 			xy2d_sprite(glm::vec4& xywh, glm::vec4& uvwh, glm::vec2& xyscale, glm::vec2& xyorigin, glm::float32_t& depth, glm::float32_t& theta)
 				: xywh(xywh), uvwh(uvwh), xyscale(xyscale), xyorigin(xyorigin), depth(depth), theta(theta) { Update(); };
 			
+			xy2d_sprite& PosSize(glm::vec4 xywh) { this->xywh = xywh; return (*this); }
+			xy2d_sprite& Position(glm::vec4 xy) { this->xywh.x = xy.x; this->xywh.y = xy.y; return (*this); }
+			xy2d_sprite& Size(glm::vec2 wh) { this->xywh.z = wh.x; this->xywh.w = wh.y; return (*this); }
+			xy2d_sprite& Origin(glm::vec2 xyorigin) { this->xyorigin = xyorigin; return (*this); }
+			xy2d_sprite& Scale(glm::vec2 xyscale) { this->xyscale = xyscale; return (*this); }
+			xy2d_sprite& Rotate(glm::float32 theta) { this->theta = theta; return (*this); }
+			xy2d_sprite& Texture(glm::vec4 uvwh) { this->uvwh = uvwh; return (*this); }
+			
 			xy2d_sprite& Update() {
 				vertices[0] = { glm::vec3(xywh.x         , xywh.y         , depth), glm::vec2(uvwh.x         , uvwh.y         ) };
 				vertices[1] = { glm::vec3(xywh.x + xywh.z, xywh.y         , depth), glm::vec2(uvwh.x + uvwh.z, uvwh.y         ) };
@@ -43,18 +51,9 @@
 					vertices[corner[i]].xyz = glm::vec3(xypos, depth);
 				}
 				
-				vertices[2] = vertices[4];
-				vertices[3] = vertices[0];
+				vertices[2] = vertices[4], vertices[3] = vertices[0];
 				return (*this);
 			}
-			
-			xy2d_sprite& PosSize(glm::vec4 xywh) { this->xywh = xywh; return (*this); }
-			xy2d_sprite& Position(glm::vec4 xy) { this->xywh.x = xy.x; this->xywh.y = xy.y; return (*this); }
-			xy2d_sprite& Size(glm::vec2 wh) { this->xywh.z = wh.x; this->xywh.w = wh.y; return (*this); }
-			xy2d_sprite& Origin(glm::vec2 xyorigin) { this->xyorigin = xyorigin; return (*this); }
-			xy2d_sprite& Scale(glm::vec2 xyscale) { this->xyscale = xyscale; return (*this); }
-			xy2d_sprite& Rotate(glm::float32 theta) { this->theta = theta; return (*this); }
-			xy2d_sprite& Texture(glm::vec4 uvwh) { this->uvwh = uvwh; return (*this); }
 			
 			inline static xy2d_sprite CreateSprite(glm::vec4 xywh, glm::vec4 uvwh, glm::vec2 xyscale, glm::vec2 xyorigin, glm::float32_t depth, glm::float32_t theta) {
 				return xy2d_sprite(xywh, uvwh, xyscale, xyorigin, depth, theta);
@@ -86,55 +85,45 @@
 			}
 			
 			inline static size_t BatchVerticesSize() {
-				return (spriteBatch.size() > 0)? std::size(spriteBatch[0]->vertices) * sizeof(xy2d_vertex) * spriteBatch.size() : 0;
+				return (spriteBatch.size() > 0)? sizeof(spriteBatch[0]->vertices) * spriteBatch.size() : 0;
 			}
 			
 			inline static bool BatchVerticesStageBuffer(xy2d_buffer* transferBuffer) {
 				uint8_t* memory = (uint8_t*) SDL_MapGPUTransferBuffer(xy2d_gamestate::device, (SDL_GPUTransferBuffer*) transferBuffer->buffer, false);
+				if (memory == nullptr) return false;
 				
-				if (memory != nullptr) {
-					for(size_t i = 0; i < spriteBatch.size(); i++) {
-						spriteBatch[i]->Update();
-						size_t vertexSize = sizeof(spriteBatch[i]->vertices);
-						SDL_memcpy(memory + (i * vertexSize), spriteBatch[i]->vertices, vertexSize);
-					}
-					
-					SDL_UnmapGPUTransferBuffer(xy2d_gamestate::device, (SDL_GPUTransferBuffer*) transferBuffer->buffer);
+				for(size_t i = 0; i < spriteBatch.size(); i++) {
+					spriteBatch[i]->Update();
+					size_t vertexSize = sizeof(spriteBatch[i]->vertices);
+					SDL_memcpy(memory + (i * vertexSize), spriteBatch[i]->vertices, vertexSize);
 				}
 				
-				return (memory != nullptr);
+				SDL_UnmapGPUTransferBuffer(xy2d_gamestate::device, (SDL_GPUTransferBuffer*) transferBuffer->buffer);
+				return true;
 			}
 			
 			inline static xy2d_image SpriteSheetLoad(std::string fileName) {
 				SDL_Surface* png = SDL_LoadPNG(fileName.c_str());
-				xy2d_image image = {};
 				
 				if (png->format == SDL_PIXELFORMAT_RGBA32) {
-					image = xy2d_gamestate::CreateTexture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, png->w, png->h);
-					
+					xy2d_image image = xy2d_gamestate::CreateTexture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, png->w, png->h);
 					size_t sizeofPixels = (png->h * png->pitch);
 					xy2d_buffer transfer = xy2d::xy2d_gamestate::CreateBuffer(sizeofPixels, xy2d::xy2d_buffertype::TRANSFER_GPU);
 					xy2d::xy2d_gamestate::StageBuffer(&transfer, png->pixels, sizeofPixels);
 					
 					SDL_GPUCommandBuffer* cmdBuffer = SDL_AcquireGPUCommandBuffer(xy2d_gamestate::device);
 						SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdBuffer);
-							SDL_GPUTextureTransferInfo transferInfo = {
-								.transfer_buffer = (SDL_GPUTransferBuffer*) transfer.buffer,
-								.offset = 0,
-								.pixels_per_row = 0,
-            					.rows_per_layer = 0,
-							};
-							SDL_GPUTextureRegion transferRegion = {
-								.texture = image.texture, .w = static_cast<uint32_t>(png->w), .h = static_cast<uint32_t>(png->h), .d = 1
-							};
+							SDL_GPUTextureTransferInfo transferInfo = { .transfer_buffer = (SDL_GPUTransferBuffer*) transfer.buffer, .offset = 0, .pixels_per_row = 0, .rows_per_layer = 0 };
+							SDL_GPUTextureRegion transferRegion = { .texture = image.texture, .w = static_cast<uint32_t>(png->w), .h = static_cast<uint32_t>(png->h), .d = 1 };
 							SDL_UploadToGPUTexture(copyPass, &transferInfo, &transferRegion, false);
 						SDL_EndGPUCopyPass(copyPass);
 					SDL_SubmitGPUCommandBuffer(cmdBuffer);
 					SDL_ReleaseGPUTransferBuffer(xy2d::xy2d_gamestate::device, (SDL_GPUTransferBuffer*) transfer.buffer);
+					return image;
 				}
 				
 				SDL_DestroySurface(png);
-				return image;
+				return {};
 			}
 		};
 	}

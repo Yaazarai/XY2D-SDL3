@@ -18,8 +18,8 @@ void main() {
 	float distA = abs(length(pixelCoord - scene.circlePosA));
 	float distB = abs(length(pixelCoord - scene.circlePosB));
 	
-	outColorA = vec4(0.0, 0.0, 0.0, 1.0);
-	outColorB = vec4(0.0, 0.0, 0.0, 1.0);
+	outColorA = vec4(1.0, 0.0, 0.0, 1.0);
+	outColorB = vec4(1.0, 0.0, 0.0, 1.0);
 	
 	if (distA < scene.circleRadius) {
 		outColorA = vec4(1.0, 1.0, 1.0, 1.0);

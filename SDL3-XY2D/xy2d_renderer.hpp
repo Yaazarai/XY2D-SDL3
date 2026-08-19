@@ -7,13 +7,12 @@
 		class xy2d_renderer {
 		public:
 			inline static glm::mat4 CameraTransform(glm::vec2 cameraSize, glm::vec2 cameraPosition, glm::vec2 cameraScale = glm::vec2(1.0f), glm::float32_t cameraTheta = 0.0f, glm::vec2 zNearFar = glm::vec2(1.0f, -1.0f)) {
-				glm::mat4 projection = glm::ortho(0.0f, cameraSize.x, cameraSize.y, 0.0f, zNearFar.x, zNearFar.y);
 				glm::vec2 cameraCenter = cameraSize / 2.0f;
+				glm::mat4 projection = glm::ortho(0.0f, cameraSize.x, cameraSize.y, 0.0f, zNearFar.x, zNearFar.y);
 				projection = glm::translate(projection, glm::vec3(cameraCenter, 0.0f));
 				projection = glm::rotate(projection, cameraTheta, glm::vec3(0.0f, 0.0f, 1.0f));
 				projection = glm::scale(projection, glm::vec3(cameraScale, 1.0f));
-				projection = glm::translate(projection, glm::vec3(-cameraCenter, 0.0f));
-				return projection;
+				return glm::translate(projection, glm::vec3(-cameraCenter, 0.0f));
 			}
 			
 			inline static void ResizeEvent(SDL_Event* event, xy2d_image* renderer) {
@@ -23,6 +22,8 @@
 				uint32_t height = width * static_cast<glm::float32_t>(xy2d_gamestate::windowSize.y) / static_cast<glm::float32_t>(xy2d_gamestate::windowSize.x);
 				SDL_ReleaseGPUTexture(xy2d_gamestate::device, renderer->texture);
 				*renderer = xy2d_gamestate::CreateTexture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB, width, height);
+				(*renderer).width = width;
+				(*renderer).height = height;
 				
 				xy2d_gamestate::LogEvent(SDL_APP_SUCCESS, { "Resize Event: ", std::to_string(width), " : ", std::to_string(height) });
 			}

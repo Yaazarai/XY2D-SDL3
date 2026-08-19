@@ -23,12 +23,11 @@ public:
 	
 	inline static void preRenderFunction(SDL_GPUCommandBuffer* cmdbuffer) {
 		SDL_GPURenderPass* renderPassA = xy2d_renderer::RenderPassBegin(cmdbuffer, { emission.texture, absorption.texture }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
-		
 		glm::mat4 cameraData = xy2d_renderer::CameraTransform(extent, glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
 		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
 		xy2d_renderer::BindFragmentUniforms(cmdbuffer, &sceneUBO, sizeof(sceneUBO));
 		xy2d_renderer::PipeVertices(renderPassA, scene_pipeline, vertexBuffer);
-		xy2d_renderer::DrawVertices(renderPassA, sceneSpriteA.batchIndex * 6, 6, 0, 1);
+		xy2d_renderer::DrawVertices(renderPassA, sceneSpriteA.batchIndex * std::size(sceneSpriteA.vertices), 6, 0, 1);
 		xy2d_renderer::RenderPassEnd(renderPassA);
 	}
 	
@@ -37,19 +36,17 @@ public:
 		//xy2d_renderer::BindComputeTextures(computePass, { emission.texture, absorption.texture });
 		int32_t xx = fluences.width / 32;
 		int32_t yy = fluences.height / 32;
-		
 		xy2d_renderer::BindComputeDispatch(computePass, pointsweep_pipeline, glm::ivec3(xx, yy, 1));
 		xy2d_renderer::ComputePassEnd(computePass);
 	}
 	
 	inline static void presentFunction(SDL_GPUCommandBuffer* cmdbuffer, SDL_GPUTexture* swapImage, SDL_GPURenderPass* renderpass, glm::uint32_t& swapImageWidth, glm::uint32_t& swapImageHeight) {
 		SDL_GPURenderPass* renderPassB = xy2d_renderer::RenderPassBegin(cmdbuffer, { swapImage }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
-		
 		glm::mat4x4 cameraData = xy2d_renderer::CameraTransform(glm::vec2(xy2d_gamestate::windowSize), glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0), 0.0f /*0.78539816339744830961566084581988f*/);
 		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
 		xy2d_renderer::BindFragmentTextures(renderPassB, { absorption.texture });
 		xy2d_renderer::PipeVertices(renderPassB, present_pipeline, vertexBuffer);
-		xy2d_renderer::DrawVertices(renderPassB, sceneSpriteB.batchIndex * 6, 6, 0, 1);
+		xy2d_renderer::DrawVertices(renderPassB, sceneSpriteB.batchIndex * std::size(sceneSpriteB.vertices), 6, 0, 1);
 		xy2d_renderer::RenderPassEnd(renderPassB);
 	}
 	
@@ -59,11 +56,9 @@ public:
 		xy2d_renderer::ResizeEvent(event, &emission);
 		
 		extent = glm::vec2(absorption.width, absorption.height);
-		
 		glm::vec2 xyscale = glm::vec2(xy2d_gamestate::windowSize) / extent;
-		
 		sceneSpriteA.Size(extent);
-		sceneSpriteB.Size(extent).Scale(xyscale * 0.5f);
+		sceneSpriteB.Size(extent).Scale(xyscale);
 		
 		xy2d_sprite_manager::BatchVerticesStageBuffer(&transferBuffer);
 		xy2d_gamestate::TransferBuffer(&transferBuffer, &vertexBuffer);
@@ -91,10 +86,8 @@ public:
 		present_pipeline = xy2d_gamestate::GraphicsPipeline("Shaders/default_output_vert.spv", 1, "Shaders/texture_output_frag.spv", 1, 0, 0, 1);
 		
 		point_sweep::sceneSpriteA = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {1.0,1.0}, {0,0}, 0.0, 0.0);
-		point_sweep::sceneSpriteB = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {1.0, 1.0}, {0,0}, 0.0, 0.0);
-		//xy2d_sprite_manager::BatchSpriteList({ point_sweep::sceneSpriteA, point_sweep::sceneSpriteB });
-		xy2d_sprite_manager::BatchSprite(point_sweep::sceneSpriteA);
-		xy2d_sprite_manager::BatchSprite(point_sweep::sceneSpriteB);
+		point_sweep::sceneSpriteB = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {1.0,1.0}, {0,0}, 0.0, 0.0);
+		xy2d_sprite_manager::BatchSpriteList({ point_sweep::sceneSpriteA, point_sweep::sceneSpriteB });
 		
 		size_t spriteVertexSize = xy2d_sprite_manager::BatchVerticesSize();
 		vertexBuffer = xy2d_gamestate::CreateBuffer(spriteVertexSize, xy2d_buffertype::STORAGE);
@@ -113,24 +106,24 @@ public:
 	inline static void gameEvent(SDL_Event* event) {
 		if (event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
 			if (event->button.button == SDL_BUTTON_LEFT && !event->button.down) {
-				float mx, my;
-				SDL_GetMouseState(&mx, &my);
-				mouse_position1 = glm::ivec2(mx, my);
-				std::cout << "MOUSE [1] CLICK: " << mouse_position1[0] << " : " << mouse_position1[1] << std::endl;
+				mouse_position1 = xy2d_gamestate::MousePosition();
+				
+				glm::vec2 scale = glm::vec2(sceneSpriteB.xyscale.x, sceneSpriteB.xyscale.y);
+				sceneUBO.circlePosA = glm::ivec2(glm::vec2(mouse_position1) * (1.0f / scale));
+				std::cout << "MOUSE [1] CLICK: " << sceneUBO.circlePosA[0] << " : " << sceneUBO.circlePosA[1] << std::endl;
 			}
 			
 			if (event->button.button == SDL_BUTTON_RIGHT && !event->button.down) {
-				float mx, my;
-				SDL_GetMouseState(&mx, &my);
-				mouse_position2 = glm::ivec2(mx, my);
-				std::cout << "MOUSE [2] CLICK: " << mouse_position2[0] << " : " << mouse_position2[1] << std::endl;
+				mouse_position2 = xy2d_gamestate::MousePosition();
+				
+				glm::vec2 scale = glm::vec2(sceneSpriteB.xyscale.x, sceneSpriteB.xyscale.y);
+				sceneUBO.circlePosB = glm::ivec2(glm::vec2(mouse_position2) * (1.0f / scale));
+				std::cout << "MOUSE [2] CLICK: " << sceneUBO.circlePosB[0] << " : " << sceneUBO.circlePosB[1] << std::endl;
 			}
 		}
 		
 		sceneUBO.renderSize = extent;
 		sceneUBO.circleRadius = 2.0F;
-		sceneUBO.circlePosA = mouse_position1 / glm::ivec2(4, 4);
-		sceneUBO.circlePosB = mouse_position2 / glm::ivec2(4, 4);
 	}
 };
 

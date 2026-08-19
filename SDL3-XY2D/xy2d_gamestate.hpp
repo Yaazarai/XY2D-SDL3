@@ -37,6 +37,12 @@
 			
 			inline static void GameWindowInit();
 			
+			inline static glm::vec2 MousePosition() {
+				glm::vec2 mxy;
+				SDL_GetMouseState(&mxy.x, &mxy.y);
+				return mxy;
+			}
+			
 			inline static void GameWindowSize(int32_t width, int32_t height) {
 				windowSize = glm::ivec2(std::max(width, minWindowSize.x), std::max(height, minWindowSize.y));
 				if (window != nullptr) SDL_SetWindowSize(window, windowSize.x, windowSize.y);
