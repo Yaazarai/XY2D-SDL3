@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/SDL3-XY2D/**",
+                "C:/lib-includes/SDL3-3.4.2/",
+				"C:/lib-includes/SDL3-3.4.2/include/",
+				"C:/lib-includes/glm-master/"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "_RELEASE"
+            ],
+            "windowsSdkVersion": "10.0.22000.0",
+            "compilerPath": "C:/Program Files/LLVM/bin/clang-cl.exe",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "linux-clang-x64",
+            "compilerArgs": []
+        }
+    ],
+    "version": 4
+}
