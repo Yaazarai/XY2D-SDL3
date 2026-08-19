@@ -23,29 +23,50 @@ public:
 	
 	inline static void preRenderFunction(SDL_GPUCommandBuffer* cmdbuffer) {
 		SDL_GPURenderPass* renderPassA = xy2d_renderer::RenderPassBegin(cmdbuffer, { emission.texture, absorption.texture }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
-		xy2d_renderer::BindVertexUniforms(cmdbuffer, &extent, sizeof(extent));
+		
+		glm::mat4 cameraData = xy2d_renderer::CameraTransform(extent, glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0));
+		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
 		xy2d_renderer::BindFragmentUniforms(cmdbuffer, &sceneUBO, sizeof(sceneUBO));
 		xy2d_renderer::PipeVertices(renderPassA, scene_pipeline, vertexBuffer);
-		xy2d_renderer::DrawVertices(renderPassA, 0, 6, 0, 1);
+		xy2d_renderer::DrawVertices(renderPassA, sceneSpriteA.batchIndex * 6, 6, 0, 1);
 		xy2d_renderer::RenderPassEnd(renderPassA);
 	}
 	
 	inline static void preRenderPointSweep(SDL_GPUCommandBuffer* cmdbuffer) {
 		SDL_GPUComputePass* computePass = xy2d_renderer::ComputePassBegin(cmdbuffer, { radiance.texture, transmit.texture, fluences.texture }, {});
 		//xy2d_renderer::BindComputeTextures(computePass, { emission.texture, absorption.texture });
-		xy2d_renderer::BindComputeDispatch(computePass, pointsweep_pipeline, glm::ivec3(8, 8, 1));
+		int32_t xx = fluences.width / 32;
+		int32_t yy = fluences.height / 32;
+		
+		xy2d_renderer::BindComputeDispatch(computePass, pointsweep_pipeline, glm::ivec3(xx, yy, 1));
 		xy2d_renderer::ComputePassEnd(computePass);
 	}
 	
 	inline static void presentFunction(SDL_GPUCommandBuffer* cmdbuffer, SDL_GPUTexture* swapImage, SDL_GPURenderPass* renderpass, glm::uint32_t& swapImageWidth, glm::uint32_t& swapImageHeight) {
 		SDL_GPURenderPass* renderPassB = xy2d_renderer::RenderPassBegin(cmdbuffer, { swapImage }, { 0.0, 0.0, 0.0, 1.0 }, SDL_GPU_LOADOP_CLEAR);
-		glm::vec2 renderSizeData = { swapImageWidth, swapImageHeight };
 		
-		xy2d_renderer::BindVertexUniforms(cmdbuffer, &renderSizeData, sizeof(renderSizeData));
-		xy2d_renderer::BindFragmentTextures(renderPassB, { fluences.texture });
+		glm::mat4x4 cameraData = xy2d_renderer::CameraTransform(glm::vec2(xy2d_gamestate::windowSize), glm::vec2(0.0, 0.0), glm::vec2(1.0, 1.0), 0.0f /*0.78539816339744830961566084581988f*/);
+		xy2d_renderer::BindVertexUniforms(cmdbuffer, &cameraData, sizeof(cameraData));
+		xy2d_renderer::BindFragmentTextures(renderPassB, { absorption.texture });
 		xy2d_renderer::PipeVertices(renderPassB, present_pipeline, vertexBuffer);
-		xy2d_renderer::DrawVertices(renderPassB, 6, 6, 0, 1);
+		xy2d_renderer::DrawVertices(renderPassB, sceneSpriteB.batchIndex * 6, 6, 0, 1);
 		xy2d_renderer::RenderPassEnd(renderPassB);
+	}
+	
+	inline static void onResizeSceneTarget(SDL_Event* event) {
+		if (event->type != SDL_EVENT_WINDOW_RESIZED) return;
+		xy2d_renderer::ResizeEvent(event, &absorption);
+		xy2d_renderer::ResizeEvent(event, &emission);
+		
+		extent = glm::vec2(absorption.width, absorption.height);
+		
+		glm::vec2 xyscale = glm::vec2(xy2d_gamestate::windowSize) / extent;
+		
+		sceneSpriteA.Size(extent);
+		sceneSpriteB.Size(extent).Scale(xyscale * 0.5f);
+		
+		xy2d_sprite_manager::BatchVerticesStageBuffer(&transferBuffer);
+		xy2d_gamestate::TransferBuffer(&transferBuffer, &vertexBuffer);
 	}
 	
 	inline static void Initialize() {
@@ -65,27 +86,28 @@ public:
 		fluences = xy2d_gamestate::CreateTexture(SDL_GPU_TEXTUREFORMAT_R11G11B10_UFLOAT, extent.x, extent.y);
 		
 		// Render pipelines: User-Scene -> Point-Sweep -> Present-Screen:
-		scene_pipeline = xy2d::xy2d_gamestate::GraphicsPipeline("Shaders/default_output_vert.spv", 1, "Shaders/circle_sdf_frag.spv", 0, 1, 0, 2);
-		pointsweep_pipeline = xy2d::xy2d_gamestate::ComputePipeline("Shaders/point_sweep_gi_comp.spv", 3, 0, 0, 0, glm::ivec3(32, 32, 1));
-		present_pipeline = xy2d::xy2d_gamestate::GraphicsPipeline("Shaders/default_output_vert.spv", 1, "Shaders/texture_output_frag.spv", 1, 0, 0, 1);
+		scene_pipeline = xy2d_gamestate::GraphicsPipeline("Shaders/default_output_vert.spv", 1, "Shaders/circle_sdf_frag.spv", 0, 1, 0, 2);
+		pointsweep_pipeline = xy2d_gamestate::ComputePipeline("Shaders/point_sweep_gi_comp.spv", 3, 0, 0, 0, glm::ivec3(32, 32, 1));
+		present_pipeline = xy2d_gamestate::GraphicsPipeline("Shaders/default_output_vert.spv", 1, "Shaders/texture_output_frag.spv", 1, 0, 0, 1);
 		
-		xy2d_sprite sceneSpriteA = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {1.0,1.0}, {0,0}, 0.0, 0.0);
-		xy2d_sprite_manager::spriteBatch.push_back(sceneSpriteA);
-		
-		xy2d_sprite sceneSpriteB = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {4.0, 4.0}, {0,0}, 0.0, 0.0);
-		xy2d_sprite_manager::spriteBatch.push_back(sceneSpriteB);
+		point_sweep::sceneSpriteA = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {1.0,1.0}, {0,0}, 0.0, 0.0);
+		point_sweep::sceneSpriteB = xy2d_sprite::CreateSprite({0,0,extent.x,extent.y}, {0.0,0.0,1.0,1.0}, {1.0, 1.0}, {0,0}, 0.0, 0.0);
+		//xy2d_sprite_manager::BatchSpriteList({ point_sweep::sceneSpriteA, point_sweep::sceneSpriteB });
+		xy2d_sprite_manager::BatchSprite(point_sweep::sceneSpriteA);
+		xy2d_sprite_manager::BatchSprite(point_sweep::sceneSpriteB);
 		
 		size_t spriteVertexSize = xy2d_sprite_manager::BatchVerticesSize();
-		vertexBuffer = xy2d_gamestate::CreateBuffer(spriteVertexSize, xy2d::xy2d_buffertype::STORAGE);
-		transferBuffer = xy2d_gamestate::CreateBuffer(spriteVertexSize, xy2d::xy2d_buffertype::TRANSFER_GPU);
+		vertexBuffer = xy2d_gamestate::CreateBuffer(spriteVertexSize, xy2d_buffertype::STORAGE);
+		transferBuffer = xy2d_gamestate::CreateBuffer(spriteVertexSize, xy2d_buffertype::TRANSFER_GPU);
 		
 		xy2d_sprite_manager::BatchVerticesStageBuffer(&transferBuffer);
-		xy2d::xy2d_gamestate::TransferBuffer(&transferBuffer, &vertexBuffer);
+		xy2d_gamestate::TransferBuffer(&transferBuffer, &vertexBuffer);
 		
 		xy2d_gamestate::onGameEvent.hook(xy2d_event_callback(point_sweep::gameEvent));
 		xy2d_gamestate::onGamePreRender.hook(xy2d_prerender_callback(point_sweep::preRenderFunction));
 		xy2d_gamestate::onGamePreRender.hook(xy2d_prerender_callback(point_sweep::preRenderPointSweep));
 		xy2d_gamestate::onGameRender.hook(xy2d_render_callback(point_sweep::presentFunction));
+		xy2d_gamestate::onGameEvent.hook(xy2d_event_callback(point_sweep::onResizeSceneTarget));
 	}
 	
 	inline static void gameEvent(SDL_Event* event) {

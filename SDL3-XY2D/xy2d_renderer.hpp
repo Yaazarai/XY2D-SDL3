@@ -6,6 +6,16 @@
 	namespace XY2D_NAMESPACE {
 		class xy2d_renderer {
 		public:
+			inline static glm::mat4 CameraTransform(glm::vec2 cameraSize, glm::vec2 cameraPosition, glm::vec2 cameraScale = glm::vec2(1.0f), glm::float32_t cameraTheta = 0.0f, glm::vec2 zNearFar = glm::vec2(1.0f, -1.0f)) {
+				glm::mat4 projection = glm::ortho(0.0f, cameraSize.x, cameraSize.y, 0.0f, zNearFar.x, zNearFar.y);
+				glm::vec2 cameraCenter = cameraSize / 2.0f;
+				projection = glm::translate(projection, glm::vec3(cameraCenter, 0.0f));
+				projection = glm::rotate(projection, cameraTheta, glm::vec3(0.0f, 0.0f, 1.0f));
+				projection = glm::scale(projection, glm::vec3(cameraScale, 1.0f));
+				projection = glm::translate(projection, glm::vec3(-cameraCenter, 0.0f));
+				return projection;
+			}
+			
 			inline static void ResizeEvent(SDL_Event* event, xy2d_image* renderer) {
 				if (event->type != SDL_EVENT_WINDOW_RESIZED) return;
 				
